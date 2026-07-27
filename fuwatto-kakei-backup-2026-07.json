@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "fixed_0",
+      "name": "家賃",
+      "fixed": true,
+      "color": "#cfe3e8"
+    },
+    {
+      "id": "fixed_1",
+      "name": "食費",
+      "fixed": true,
+      "color": "#f2d9dc"
+    },
+    {
+      "id": "fixed_2",
+      "name": "光熱費",
+      "fixed": true,
+      "color": "#dce4cc"
+    },
+    {
+      "id": "fixed_3",
+      "name": "通信費",
+      "fixed": true,
+      "color": "#ddd9ed"
+    },
+    {
+      "id": "fixed_4",
+      "name": "日用品",
+      "fixed": true,
+      "color": "#f1dfc7"
+    },
+    {
+      "id": "fixed_5",
+      "name": "娯楽",
+      "fixed": true,
+      "color": "#cfddec"
+    },
+    {
+      "id": "fixed_6",
+      "name": "貯金",
+      "fixed": true,
+      "color": "#e8d7e7"
+    },
+    {
+      "id": "fixed_7",
+      "name": "その他",
+      "fixed": true,
+      "color": "#d8e2dd"
+    }
+  ],
+  "months": {
+    "2026-07": {
+      "fixed_0": {
+        "actual": 120000,
+        "budget": 150000
+      },
+      "fixed_1": {
+        "actual": 32000,
+        "budget": 0
+      }
+    },
+    "2026-08": {}
+  }
+}
