@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fb">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="円がふわっと動く、端末保存の家計管理アプリ">
+  <title>ふわっと家計</title>
+  <style>
+    :root {
+      --ink:#26313c; --muted:#6b7580; --line:rgba(50,64,76,.11); --paper:rgba(255,255,255,.82);
+      --accent:#526d82; --accent-soft:#eaf0f4; --danger:#a85252; --shadow:0 12px 34px rgba(49,63,76,.08);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
+      color:var(--ink); background:#f5f7f8; font-synthesis:none;
+    }
+    *{box-sizing:border-box}
+    html{min-width:280px;background:#f5f7f8;scroll-behavior:smooth}
+    body{margin:0;min-height:100vh;background:
+      radial-gradient(circle at 12% 3%,rgba(210,229,237,.62),transparent 29rem),
+      radial-gradient(circle at 92% 13%,rgba(240,221,226,.44),transparent 25rem),
+      linear-gradient(180deg,#fafbfc 0%,#f3f5f6 100%);overflow-x:hidden}
+    button,input{font:inherit}
+    button{border:0;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    button:focus-visible,input:focus-visible{outline:3px solid rgba(76,113,138,.25);outline-offset:2px}
+    .app{width:min(100%,960px);margin:auto;padding:0 max(14px,env(safe-area-inset-left)) calc(44px + env(safe-area-inset-bottom))}
+    header{padding:30px 2px 18px}
+    .brand-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+    .eyebrow{font-size:.72rem;letter-spacing:.17em;color:#7d8993;font-weight:700;margin:0 0 7px}
+    h1{font-size:clamp(1.72rem,7vw,2.35rem);letter-spacing:-.045em;margin:0;font-weight:730}
+    .tagline{color:var(--muted);font-size:.87rem;margin:8px 0 0}
+    .icon-btn,.soft-btn,.primary-btn,.danger-btn{min-height:44px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:650}
+    .icon-btn{width:44px;background:var(--paper);border:1px solid var(--line);box-shadow:0 5px 18px rgba(44,57,70,.05);font-size:1.15rem}
+    .month-card,.panel,.summary-card{background:var(--paper);border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+    .month-card{border-radius:22px;padding:11px;display:grid;grid-template-columns:44px 1fr 44px;align-items:center}
+    .month-label{text-align:center}
+    .month-label strong{font-size:1.12rem;letter-spacing:.02em}
+    .month-label span{display:block;color:var(--muted);font-size:.72rem;margin-top:2px}
+    .month-actions{display:flex;justify-content:center;margin:9px 0 0}
+    .today-btn{background:transparent;color:var(--accent);font-size:.78rem;padding:8px 14px;border-radius:999px}
+    .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+    .summary-card{border-radius:19px;padding:15px;min-width:0}
+    .summary-card.primary{grid-column:1/-1;background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(235,242,245,.9))}
+    .summary-label{font-size:.74rem;color:var(--muted);font-weight:650}
+    .summary-value{font-size:clamp(1.18rem,6vw,1.75rem);letter-spacing:-.035em;font-weight:740;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .summary-sub{color:var(--muted);font-size:.71rem;margin-top:3px}
+    .progress{height:7px;background:rgba(58,73,85,.08);border-radius:999px;overflow:hidden;margin-top:11px}
+    .progress>i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9cb9c3,#738fa0);transition:width .3s ease}
+    .panel{border-radius:26px;padding:17px;margin-top:16px}
+    .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+    h2{font-size:1.04rem;margin:0;letter-spacing:-.02em}
+    .section-copy{font-size:.74rem;color:var(--muted);margin:5px 0 0;line-height:1.5}
+    .soft-btn,.primary-btn,.danger-btn{padding:0 14px;font-size:.8rem}
+    .soft-btn{background:#eef2f4;color:#51626e}
+    .primary-btn{background:#526d82;color:#fff}
+    .danger-btn{background:#fff0f0;color:var(--danger)}
+    #world{height:clamp(390px,58vh,560px);position:relative;overflow:hidden;border-radius:21px;background:
+      radial-gradient(circle at 50% 7%,rgba(255,255,255,.93),rgba(246,249,250,.68) 55%,rgba(231,237,240,.78));
+      border:1px solid rgba(85,102,116,.08);touch-action:pan-y;isolation:isolate}
+    #world::after{content:"";position:absolute;left:6%;right:6%;bottom:0;height:24px;background:radial-gradient(ellipse,rgba(56,71,82,.10),transparent 70%);pointer-events:none}
+    .empty-world{position:absolute;inset:0;display:grid;place-content:center;text-align:center;color:#7d8992;padding:30px;pointer-events:none}
+    .empty-world .empty-mark{width:55px;height:55px;border-radius:50%;background:#e8eff2;margin:0 auto 14px;box-shadow:18px -8px 0 -8px #f0e6e7,-17px 8px 0 -10px #e9e5f1}
+    .empty-world strong{color:#52616c;font-size:.9rem}
+    .empty-world span{font-size:.75rem;margin-top:5px}
+    .bubble{position:absolute;left:0;top:0;display:grid;place-content:center;text-align:center;will-change:transform;user-select:none;-webkit-user-select:none;touch-action:none;cursor:grab;filter:drop-shadow(0 9px 9px rgba(56,69,79,.11))}
+    .bubble:focus-visible{outline:3px solid rgba(75,107,130,.45);outline-offset:4px}
+    .bubble.dragging{cursor:grabbing;z-index:5}
+    .bubble-shape{position:absolute;inset:0;border-radius:50%;background:var(--bubble);border:1px solid rgba(255,255,255,.72);box-shadow:inset 8px 10px 18px rgba(255,255,255,.33),inset -7px -9px 17px rgba(74,80,90,.035);will-change:border-radius,transform}
+    .bubble-text{position:relative;z-index:1;padding:8px;max-width:100%;pointer-events:none;line-height:1.18;color:#35414a;text-shadow:0 1px rgba(255,255,255,.5)}
+    .bubble-name{display:block;font-weight:720;font-size:clamp(.65rem,2.8vw,.84rem);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .bubble-amount{display:block;font-size:clamp(.58rem,2.45vw,.74rem);margin-top:4px;font-variant-numeric:tabular-nums}
+    .visual-actions{display:flex;gap:8px;justify-content:center;margin-top:12px}
+    .category-list{display:grid;gap:10px}
+    .category{border:1px solid var(--line);border-radius:19px;background:rgba(252,253,253,.78);padding:13px;min-width:0}
+    .cat-head{display:flex;align-items:center;gap:9px;min-width:0}
+    .swatch{width:12px;height:12px;flex:0 0 12px;border-radius:50%;background:var(--cat)}
+    .cat-name{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+    .fixed-badge{font-size:.62rem;color:#7b8790;background:#edf1f3;border-radius:999px;padding:4px 7px;white-space:nowrap}
+    .cat-tools{display:flex;gap:4px}
+    .mini-btn{width:36px;height:36px;border-radius:11px;background:transparent;color:#70808b;display:grid;place-items:center;font-size:.9rem}
+    .mini-btn:disabled{opacity:.24;cursor:not-allowed}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px}
+    label.field{display:block;min-width:0;color:var(--muted);font-size:.68rem;font-weight:650}
+    .money-input{display:flex;align-items:center;background:#f1f4f5;border:1px solid transparent;border-radius:13px;height:48px;margin-top:5px;padding:0 10px;transition:.15s}
+    .money-input:focus-within{background:#fff;border-color:#b8c8d2;box-shadow:0 0 0 3px rgba(100,130,148,.09)}
+    .money-input span{font-size:.77rem;color:#87929a}
+    .money-input input{width:100%;min-width:0;border:0;outline:0;background:transparent;text-align:right;color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+    .cat-stats{display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 10px;margin-top:10px;font-size:.69rem;color:var(--muted)}
+    .cat-stats .progress{margin:0;grid-column:1/2;height:5px}
+    .remaining{font-weight:700;color:#5c6c76;white-space:nowrap}
+    .over{color:#a75555!important}
+    .rate{grid-column:2;grid-row:1/3;font-weight:700;font-size:.74rem}
+    .add-form{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+    .text-input{height:46px;border-radius:14px;border:1px solid var(--line);background:#f5f7f8;padding:0 13px;min-width:0;outline:0}
+    .text-input:focus{background:#fff;border-color:#b5c6d1;box-shadow:0 0 0 3px rgba(100,130,148,.09)}
+    .data-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .data-actions button{width:100%}
+    .data-actions .danger-btn{grid-column:1/-1}
+    .privacy-note{font-size:.69rem;color:var(--muted);line-height:1.55;margin:12px 2px 0}
+    dialog{border:0;padding:0;border-radius:24px;width:min(calc(100% - 28px),420px);background:#fff;color:var(--ink);box-shadow:0 30px 80px rgba(30,43,53,.24)}
+    dialog::backdrop{background:rgba(37,47,55,.32);backdrop-filter:blur(4px)}
+    .dialog-body{padding:23px}
+    .dialog-body h3{margin:0 0 9px;font-size:1.15rem}
+    .dialog-body p{margin:0;color:var(--muted);font-size:.83rem;line-height:1.65}
+    .dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+    .toast{position:fixed;z-index:30;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,18px);background:rgba(43,55,64,.93);color:#fff;padding:11px 16px;border-radius:999px;font-size:.78rem;opacity:0;pointer-events:none;transition:.22s;white-space:nowrap;max-width:calc(100% - 28px);overflow:hidden;text-overflow:ellipsis}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media (min-width:700px){
+      .app{padding-top:12px}.summary-grid{grid-template-columns:1.25fr 1fr 1fr}.summary-card.primary{grid-column:auto}
+      .category-list{grid-template-columns:1fr 1fr}.panel{padding:22px}.data-actions{grid-template-columns:1fr 1fr 1fr}.data-actions .danger-btn{grid-column:auto}
+    }
+    @media (max-width:350px){
+      .app{padding-left:10px;padding-right:10px}.panel{padding:12px;border-radius:21px}.fields{gap:6px}.category{padding:10px}.fixed-badge{display:none}
+      .cat-tools{gap:0}.mini-btn{width:32px}.soft-btn,.primary-btn,.danger-btn{padding:0 10px}.tagline{font-size:.8rem}
+    }
+    @media (prefers-reduced-motion:reduce){
+      html{scroll-behavior:auto}.progress>i,.toast{transition:none}.bubble{filter:none}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand-row">
+        <div><p class="eyebrow">PERSONAL BUDGET</p><h1>ふわっと家計</h1><p class="tagline">今月のお金を、やわらかく見渡す。</p></div>
+        <button class="icon-btn" id="scrollData" type="button" aria-label="データ管理へ移動">•••</button>
+      </div>
+    </header>
+
+    <section aria-labelledby="monthHeading">
+      <h2 id="monthHeading" class="sr-only">表示月</h2>
+      <div class="month-card">
+        <button class="icon-btn" id="prevMonth" type="button" aria-label="前月へ">‹</button>
+        <div class="month-label" aria-live="polite"><strong id="monthText"></strong><span id="monthCaption"></span></div>
+        <button class="icon-btn" id="nextMonth" type="button" aria-label="次月へ">›</button>
+      </div>
+      <div class="month-actions"><button class="today-btn" id="thisMonth" type="button">今月に戻る</button></div>
+    </section>
+
+    <section class="summary-grid" aria-label="月の集計">
+      <article class="summary-card primary"><div class="summary-label">実績合計</div><div class="summary-value" id="totalActual">¥0</div><div class="summary-sub" id="countSummary">入力はまだありません</div></article>
+      <article class="summary-card"><div class="summary-label">全体予算</div><div class="summary-value" id="totalBudget">¥0</div><div class="summary-sub">カテゴリー予算の合計</div></article>
+      <article class="summary-card"><div class="summary-label">残り</div><div class="summary-value" id="totalRemaining">¥0</div><div class="progress" aria-hidden="true"><i id="totalProgress"></i></div><div class="summary-sub" id="totalRate">予算を設定すると表示</div></article>
+    </section>
+
+    <section class="panel" aria-labelledby="visualHeading">
+      <div class="section-head">
+        <div><h2 id="visualHeading">お金のバランス</h2><p class="section-copy">円をつかんで動かせます。大きさは金額の目安です。</p></div>
+      </div>
+      <div id="world" aria-label="カテゴリー金額の円グラフ" role="application">
+        <div class="empty-world" id="emptyWorld"><span class="empty-mark"></span><strong>金額を入力すると円が現れます</strong><span>入力した大きさに合わせて、ふわっと落ちてきます。</span></div>
+      </div>
+      <div class="visual-actions"><button class="soft-btn" id="redrop" type="button">円をもう一度降らせる</button></div>
+    </section>
+
+    <section class="panel" aria-labelledby="inputHeading">
+      <div class="section-head"><div><h2 id="inputHeading">実績と予算</h2><p class="section-copy">入力内容はこの端末に自動保存されます。</p></div></div>
+      <div class="category-list" id="categoryList"></div>
+      <form class="add-form" id="addForm">
+        <label class="sr-only" for="newCategory">新しいカテゴリー名</label>
+        <input class="text-input" id="newCategory" maxlength="24" autocomplete="off" placeholder="新しいカテゴリー名">
+        <button class="primary-btn" type="submit">追加</button>
+      </form>
+    </section>
+
+    <section class="panel" id="dataPanel" aria-labelledby="dataHeading">
+      <div class="section-head"><div><h2 id="dataHeading">データ管理</h2><p class="section-copy">バックアップはすべての月とカテゴリーを含みます。</p></div></div>
+      <div class="data-actions">
+        <button class="soft-btn" id="exportData" type="button">JSONを書き出す</button>
+        <button class="soft-btn" id="importData" type="button">JSONを読み込む</button>
+        <button class="danger-btn" id="deleteData" type="button">すべて削除</button>
+      </div>
+      <input class="sr-only" id="fileInput" type="file" accept="application/json,.json">
+      <p class="privacy-note">データはこのブラウザの中だけに保存されます。サーバーへの送信や、ほかの利用者との共有は行いません。</p>
+    </section>
+  </main>
+
+  <dialog id="confirmDialog" aria-labelledby="dialogTitle">
+    <div class="dialog-body">
+      <h3 id="dialogTitle">すべてのデータを削除しますか？</h3>
+      <p>すべての月の実績・予算と、追加したカテゴリーが消去されます。この操作は元に戻せません。</p>
+      <div class="dialog-actions"><button class="soft-btn" id="cancelDelete" type="button">キャンセル</button><button class="danger-btn" id="confirmDelete" type="button">削除する</button></div>
+    </div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  "use strict";
+  (() => {
+    const STORAGE_KEY = "fuwatto-kakei-v1";
+    const FIXED = ["家賃","食費","光熱費","通信費","日用品","娯楽","貯金","その他"];
+    const COLORS = ["#cfe3e8","#f2d9dc","#dce4cc","#ddd9ed","#f1dfc7","#cfddec","#e8d7e7","#d8e2dd","#ead8c8","#d5e6df","#e5dcce","#d8dced"];
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const yen = new Intl.NumberFormat("ja-JP",{style:"currency",currency:"JPY",maximumFractionDigits:0});
+    const el = id => document.getElementById(id);
+    const dom = {
+      monthText:el("monthText"),monthCaption:el("monthCaption"),totalActual:el("totalActual"),totalBudget:el("totalBudget"),
+      totalRemaining:el("totalRemaining"),totalProgress:el("totalProgress"),totalRate:el("totalRate"),countSummary:el("countSummary"),
+      categoryList:el("categoryList"),world:el("world"),emptyWorld:el("emptyWorld"),toast:el("toast"),fileInput:el("fileInput"),
+      dialog:el("confirmDialog")
+    };
+
+    const makeId = () => "c_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+    const defaultState = () => ({
+      version:1,
+      categories:FIXED.map((name,i)=>({id:"fixed_"+i,name,fixed:true,color:COLORS[i]})),
+      months:{}
+    });
+    let state = loadState();
+    let viewDate = new Date(); viewDate.setDate(1); viewDate.setHours(12,0,0,0);
+    let saveTimer = 0, toastTimer = 0, animationId = 0, lastTime = performance.now();
+    const bubbles = new Map();
+    let activeDrag = null;
+
+    function isPlainObject(v){return v !== null && typeof v === "object" && !Array.isArray(v)}
+    function validAmount(v){return Number.isFinite(v) && v >= 0 && v <= 999999999999}
+    function normalizeState(raw){
+      if(!isPlainObject(raw)||raw.version!==1||!Array.isArray(raw.categories)||!isPlainObject(raw.months)) throw new Error("形式が正しくありません");
+      const ids = new Set(), categories=[];
+      raw.categories.forEach((c,i)=>{
+        if(!isPlainObject(c)||typeof c.id!=="string"||typeof c.name!=="string") throw new Error("カテゴリーが正しくありません");
+        const name=c.name.trim();
+        if(!name||name.length>24||ids.has(c.id)||c.id.length>80) throw new Error("カテゴリーが正しくありません");
+        ids.add(c.id);
+        categories.push({id:c.id,name,fixed:i<FIXED.length&&c.id==="fixed_"+i&&name===FIXED[i],color:typeof c.color==="string"&&/^#[0-9a-f]{6}$/i.test(c.color)?c.color:COLORS[i%COLORS.length]});
+      });
+      if(categories.length<FIXED.length||categories.length>80) throw new Error("カテゴリー数が正しくありません");
+      FIXED.forEach((name,i)=>{if(categories[i].id!=="fixed_"+i||categories[i].name!==name) throw new Error("固定カテゴリーが正しくありません")});
+      const months={};
+      Object.entries(raw.months).forEach(([key,data])=>{
+        if(!/^\d{4}-\d{2}$/.test(key)||!isPlainObject(data)) throw new Error("月データが正しくありません");
+        const clean={};
+        Object.entries(data).forEach(([id,v])=>{
+          if(!ids.has(id)||!isPlainObject(v)) return;
+          const actual=Number(v.actual),budget=Number(v.budget);
+          if(!validAmount(actual)||!validAmount(budget)) throw new Error("金額が正しくありません");
+          if(actual||budget) clean[id]={actual:Math.round(actual),budget:Math.round(budget)};
+        });
+        if(Object.keys(clean).length) months[key]=clean;
+      });
+      return {version:1,categories,months};
+    }
+    function loadState(){
+      try{
+        const saved=localStorage.getItem(STORAGE_KEY);
+        return saved?normalizeState(JSON.parse(saved)):defaultState();
+      }catch(err){
+        console.warn("保存データを初期化しました:",err.message);
+        return defaultState();
+      }
+    }
+    function saveNow(){
+      clearTimeout(saveTimer);
+      try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+      catch(err){showToast("保存できませんでした。空き容量をご確認ください")}
+    }
+    function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,180)}
+    function monthKey(){return viewDate.getFullYear()+"-"+String(viewDate.getMonth()+1).padStart(2,"0")}
+    function currentMonthData(){const key=monthKey();return state.months[key]||(state.months[key]={})}
+    function values(id){const v=currentMonthData()[id];return v||{actual:0,budget:0}}
+    function formatPlain(n){return n?new Intl.NumberFormat("ja-JP").format(n):""}
+    function parseMoney(s){const n=Number(String(s).replace(/[^\d]/g,""));return validAmount(n)?Math.round(n):0}
+    function showToast(message){dom.toast.textContent=message;dom.toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>dom.toast.classList.remove("show"),2400)}
+
+    function updateMonthHeader(){
+      dom.monthText.textContent=viewDate.getFullYear()+"年 "+(viewDate.getMonth()+1)+"月";
+      const now=new Date(), diff=(viewDate.getFullYear()-now.getFullYear())*12+viewDate.getMonth()-now.getMonth();
+      dom.monthCaption.textContent=diff===0?"今月":diff===-1?"先月":diff===1?"来月":diff<0?Math.abs(diff)+"か月前":diff+"か月後";
+    }
+    function totals(){
+      return state.categories.reduce((a,c)=>{const v=values(c.id);a.actual+=v.actual;a.budget+=v.budget;if(v.actual)a.count++;return a},{actual:0,budget:0,count:0});
+    }
+    function updateSummary(){
+      const t=totals(),remaining=t.budget-t.actual,rate=t.budget?Math.round(t.actual/t.budget*100):0;
+      dom.totalActual.textContent=yen.format(t.actual);dom.totalBudget.textContent=yen.format(t.budget);dom.totalRemaining.textContent=yen.format(remaining);
+      dom.totalRemaining.classList.toggle("over",remaining<0);
+      dom.totalProgress.style.width=Math.min(rate,100)+"%";
+      dom.totalProgress.style.background=rate>100?"#c98686":"";
+      dom.totalRate.textContent=t.budget?rate+"% 消化":"予算を設定すると表示";
+      dom.countSummary.textContent=t.count?t.count+"カテゴリーに入力":"入力はまだありません";
+    }
+    function makeButton(label,title,handler,disabled=false){
+      const b=document.createElement("button");b.type="button";b.className="mini-btn";b.textContent=label;b.title=title;b.setAttribute("aria-label",title);b.disabled=disabled;b.addEventListener("click",handler);return b;
+    }
+    function renderCategories(){
+      dom.categoryList.replaceChildren();
+      state.categories.forEach((cat,index)=>{
+        const v=values(cat.id), remaining=v.budget-v.actual, rate=v.budget?Math.round(v.actual/v.budget*100):0;
+        const card=document.createElement("article");card.className="category";card.style.setProperty("--cat",cat.color);card.dataset.id=cat.id;
+        const head=document.createElement("div");head.className="cat-head";
+        const swatch=document.createElement("span");swatch.className="swatch";swatch.setAttribute("aria-hidden","true");
+        const name=document.createElement("span");name.className="cat-name";name.textContent=cat.name;
+        head.append(swatch,name);
+        if(cat.fixed){const badge=document.createElement("span");badge.className="fixed-badge";badge.textContent="固定";head.append(badge)}
+        else{
+          const tools=document.createElement("div");tools.className="cat-tools";
+          tools.append(
+            makeButton("↑",cat.name+"を上へ",()=>moveCategory(index,-1),index===FIXED.length),
+            makeButton("↓",cat.name+"を下へ",()=>moveCategory(index,1),index===state.categories.length-1),
+            makeButton("✎",cat.name+"の名前を変更",()=>renameCategory(cat)),
+            makeButton("×",cat.name+"を削除",()=>deleteCategory(cat))
+          );head.append(tools)
+        }
+        const fields=document.createElement("div");fields.className="fields";
+        fields.append(makeMoneyField(cat,"actual","実績",v.actual),makeMoneyField(cat,"budget","予算",v.budget));
+        const stats=document.createElement("div");stats.className="cat-stats";
+        const rem=document.createElement("span");rem.className="remaining"+(remaining<0?" over":"");rem.textContent=v.budget?"残り "+yen.format(remaining):"予算未設定";
+        const prog=document.createElement("div");prog.className="progress";prog.setAttribute("aria-hidden","true");
+        const bar=document.createElement("i");bar.style.width=Math.min(rate,100)+"%";if(rate>100)bar.style.background="#c98686";prog.append(bar);
+        const rateEl=document.createElement("span");rateEl.className="rate"+(rate>100?" over":"");rateEl.textContent=v.budget?rate+"%":"—";
+        stats.append(rem,prog,rateEl);card.append(head,fields,stats);dom.categoryList.append(card);
+      });
+    }
+    function makeMoneyField(cat,type,label,value){
+      const lab=document.createElement("label");lab.className="field";lab.textContent=label;
+      const wrap=document.createElement("span");wrap.className="money-input";
+      const input=document.createElement("input");input.type="text";input.inputMode="numeric";input.autocomplete="off";input.value=formatPlain(value);
+      input.setAttribute("aria-label",cat.name+"の"+label);input.dataset.type=type;input.dataset.id=cat.id;
+      const suffix=document.createElement("span");suffix.textContent="円";
+      input.addEventListener("focus",()=>{input.value=valueOfInput(input)||"";input.select()});
+      input.addEventListener("input",()=>updateAmount(cat.id,type,parseMoney(input.value),false));
+      input.addEventListener("blur",()=>{input.value=formatPlain(valueOfInput(input));renderCategories();updateSummary()});
+      input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();input.blur()}});
+      wrap.append(input,suffix);lab.append(wrap);return lab;
+    }
+    function valueOfInput(input){return values(input.dataset.id)[input.dataset.type]||0}
+    function updateAmount(id,type,amount,fullRender){
+      const month=currentMonthData(), old=month[id]||{actual:0,budget:0};month[id]={actual:old.actual,budget:old.budget};month[id][type]=amount;
+      if(!month[id].actual&&!month[id].budget)delete month[id];
+      scheduleSave();updateSummary();
+      if(type==="actual")syncBubbles(true);
+      if(fullRender)renderCategories();
+      else updateCardStats(id);
+    }
+    function updateCardStats(id){
+      const card=dom.categoryList.querySelector('[data-id="'+CSS.escape(id)+'"]');if(!card)return;
+      const v=values(id),rem=v.budget-v.actual,rate=v.budget?Math.round(v.actual/v.budget*100):0;
+      const remEl=card.querySelector(".remaining"),rateEl=card.querySelector(".rate"),bar=card.querySelector(".progress i");
+      remEl.textContent=v.budget?"残り "+yen.format(rem):"予算未設定";remEl.classList.toggle("over",rem<0);
+      rateEl.textContent=v.budget?rate+"%":"—";rateEl.classList.toggle("over",rate>100);bar.style.width=Math.min(rate,100)+"%";bar.style.background=rate>100?"#c98686":"";
+    }
+    function moveCategory(index,dir){
+      const target=index+dir;if(index<FIXED.length||target<FIXED.length||target>=state.categories.length)return;
+      [state.categories[index],state.categories[target]]=[state.categories[target],state.categories[index]];saveNow();renderCategories();syncBubbles(false);showToast("並び順を変更しました");
+    }
+    function renameCategory(cat){
+      const next=prompt("カテゴリー名を入力してください",cat.name);if(next===null)return;const name=next.trim();
+      if(!name){showToast("名前を入力してください");return}if(name.length>24){showToast("名前は24文字以内で入力してください");return}
+      cat.name=name;saveNow();renderCategories();syncBubbles(false);showToast("名前を変更しました");
+    }
+    function deleteCategory(cat){
+      if(cat.fixed)return;
+      if(!confirm("「"+cat.name+"」を削除しますか？\\nすべての月の実績と予算も削除されます。"))return;
+      state.categories=state.categories.filter(c=>c.id!==cat.id);Object.values(state.months).forEach(m=>delete m[cat.id]);
+      saveNow();renderCategories();updateSummary();syncBubbles(false);showToast("カテゴリーを削除しました");
+    }
+
+    function bubbleSize(amount,maxAmount){
+      const min=76,max=Math.min(170,dom.world.clientWidth*.43);
+      return min+(max-min)*Math.sqrt(amount/maxAmount);
+    }
+    function createBubble(cat,amount,size,drop){
+      const node=document.createElement("div");node.className="bubble";node.tabIndex=0;node.dataset.id=cat.id;node.setAttribute("role","button");
+      const shape=document.createElement("span");shape.className="bubble-shape";
+      const text=document.createElement("span");text.className="bubble-text";
+      const name=document.createElement("span");name.className="bubble-name";
+      const amt=document.createElement("span");amt.className="bubble-amount";name.textContent=cat.name;amt.textContent=yen.format(amount);text.append(name,amt);node.append(shape,text);
+      node.style.setProperty("--bubble",cat.color);node.style.width=node.style.height=size+"px";
+      const w=dom.world.clientWidth,x=Math.max(size/2+2,Math.min(w-size/2-2,Math.random()*w));
+      const b={id:cat.id,node,shape,x,y:drop?-size/2:Math.max(size/2,dom.world.clientHeight-size/2-8),vx:(Math.random()-.5)*.7,vy:drop?reduceMotion?0:Math.random()*.5:0,r:size/2,size,targetSize:size,squishX:0,squishY:0,press:0};
+      node.addEventListener("pointerdown",e=>startDrag(e,b));
+      node.addEventListener("keydown",e=>keyboardBubble(e,b));
+      dom.world.append(node);bubbles.set(cat.id,b);return b;
+    }
+    function syncBubbles(dropNew){
+      const active=state.categories.map(c=>({cat:c,amount:values(c.id).actual})).filter(x=>x.amount>0);
+      dom.emptyWorld.hidden=active.length>0;
+      const activeIds=new Set(active.map(x=>x.cat.id));
+      for(const [id,b] of bubbles)if(!activeIds.has(id)){b.node.remove();bubbles.delete(id)}
+      const maxAmount=Math.max(1,...active.map(x=>x.amount));
+      active.forEach(({cat,amount})=>{
+        const size=bubbleSize(amount,maxAmount);let b=bubbles.get(cat.id);
+        if(!b)b=createBubble(cat,amount,size,dropNew);
+        b.targetSize=size;b.node.style.setProperty("--bubble",cat.color);b.node.querySelector(".bubble-name").textContent=cat.name;b.node.querySelector(".bubble-amount").textContent=yen.format(amount);
+        b.node.setAttribute("aria-label",cat.name+" "+yen.format(amount)+"。矢印キーで移動できます");
+        if(dropNew&&!activeDrag){b.y=-b.r-Math.random()*100;b.vy=reduceMotion?0:0.4+Math.random()*.7}
+      });
+      if(active.length)startAnimation();
+    }
+    function redrop(){
+      bubbles.forEach((b,i)=>{b.y=-b.r-i*18;b.vy=reduceMotion?0:.3+Math.random();b.vx=(Math.random()-.5)*1.5});
+      startAnimation();showToast("円を降らせました");
+    }
+    function startDrag(e,b){
+      if(e.pointerType==="mouse"&&e.button!==0)return;
+      const rect=dom.world.getBoundingClientRect();
+      activeDrag={b,pointerId:e.pointerId,startClientX:e.clientX,startClientY:e.clientY,startX:b.x,startY:b.y,lastX:e.clientX,lastY:e.clientY,lastT:performance.now(),moved:false};
+      b.node.setPointerCapture(e.pointerId);b.node.classList.add("dragging");b.press=1;
+      updateDeform(b,e.clientX-rect.left-b.x,e.clientY-rect.top-b.y);
+      b.node.addEventListener("pointermove",dragMove);b.node.addEventListener("pointerup",endDrag);b.node.addEventListener("pointercancel",endDrag);startAnimation();
+    }
+    function dragMove(e){
+      if(!activeDrag||e.pointerId!==activeDrag.pointerId)return;
+      const a=activeDrag,dx=e.clientX-a.startClientX,dy=e.clientY-a.startClientY;
+      if(Math.hypot(dx,dy)>5)a.moved=true;
+      const rect=dom.world.getBoundingClientRect(),now=performance.now(),dt=Math.max(8,now-a.lastT);
+      a.b.x=Math.max(a.b.r,Math.min(rect.width-a.b.r,a.startX+dx));a.b.y=Math.max(a.b.r,Math.min(rect.height-a.b.r,a.startY+dy));
+      a.b.vx=(e.clientX-a.lastX)/dt*12;a.b.vy=(e.clientY-a.lastY)/dt*12;a.lastX=e.clientX;a.lastY=e.clientY;a.lastT=now;
+      updateDeform(a.b,e.clientX-rect.left-a.b.x,e.clientY-rect.top-a.b.y);
+      if(a.moved)e.preventDefault();
+    }
+    function updateDeform(b,dx,dy){
+      const d=Math.max(1,Math.hypot(dx,dy)),nx=dx/d,ny=dy/d,strength=Math.min(1,d/b.r);
+      b.squishX=nx*(8+7*strength);b.squishY=ny*(8+7*strength);
+    }
+    function endDrag(e){
+      if(!activeDrag||e.pointerId!==activeDrag.pointerId)return;
+      const b=activeDrag.b;b.node.classList.remove("dragging");b.node.removeEventListener("pointermove",dragMove);b.node.removeEventListener("pointerup",endDrag);b.node.removeEventListener("pointercancel",endDrag);
+      b.press=0;activeDrag=null;startAnimation();
+    }
+    function keyboardBubble(e,b){
+      const step=e.shiftKey?20:8;let used=true;
+      if(e.key==="ArrowLeft")b.x-=step;else if(e.key==="ArrowRight")b.x+=step;else if(e.key==="ArrowUp")b.y-=step;else if(e.key==="ArrowDown")b.y+=step;else used=false;
+      if(used){e.preventDefault();b.x=Math.max(b.r,Math.min(dom.world.clientWidth-b.r,b.x));b.y=Math.max(b.r,Math.min(dom.world.clientHeight-b.r,b.y));b.press=.45;setTimeout(()=>b.press=0,110);startAnimation()}
+    }
+    function physics(dt){
+      const width=dom.world.clientWidth,height=dom.world.clientHeight,arr=[...bubbles.values()];
+      arr.forEach(b=>{
+        if(b!==activeDrag?.b){
+          b.vy+=reduceMotion?0:.13*dt;b.vx*=Math.pow(.992,dt);b.vy*=Math.pow(.996,dt);b.x+=b.vx*dt;b.y+=b.vy*dt;
+        }
+        b.size+=(b.targetSize-b.size)*Math.min(1,.16*dt);b.r=b.size/2;b.node.style.width=b.node.style.height=b.size+"px";
+        if(b.x-b.r<0){b.x=b.r;b.vx=Math.abs(b.vx)*.65}
+        if(b.x+b.r>width){b.x=width-b.r;b.vx=-Math.abs(b.vx)*.65}
+        if(b.y-b.r<0&&!reduceMotion){if(b.y<-b.r*3)b.y=-b.r*3}
+        if(b.y+b.r>height){b.y=height-b.r;b.vy=-Math.abs(b.vy)*.52;if(Math.abs(b.vy)<.18)b.vy=0}
+      });
+      for(let pass=0;pass<2;pass++)for(let i=0;i<arr.length;i++)for(let j=i+1;j<arr.length;j++){
+        const a=arr[i],b=arr[j],dx=b.x-a.x,dy=b.y-a.y,min=a.r+b.r+2,d=Math.hypot(dx,dy)||.01;
+        if(d<min){const nx=dx/d,ny=dy/d,overlap=min-d,wa=a===activeDrag?.b?0:1,wb=b===activeDrag?.b?0:1,total=wa+wb||1;
+          a.x-=nx*overlap*wa/total;b.x+=nx*overlap*wb/total;a.y-=ny*overlap*wa/total;b.y+=ny*overlap*wb/total;
+          const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rel<0){const impulse=-rel*.62;a.vx-=impulse*nx*wa;b.vx+=impulse*nx*wb;a.vy-=impulse*ny*wa;b.vy+=impulse*ny*wb}
+        }
+      }
+      arr.forEach(b=>{
+        b.x=Math.max(b.r,Math.min(width-b.r,b.x));if(reduceMotion)b.y=Math.max(b.r,Math.min(height-b.r,b.y));
+        if(!b.press){b.squishX*=Math.pow(.78,dt);b.squishY*=Math.pow(.78,dt)}
+        const speed=Math.min(1,Math.hypot(b.vx,b.vy)/5),sx=1+(Math.abs(b.squishX)/b.r)*.2+speed*.025,sy=1-(Math.abs(b.squishY)/b.r)*.11-speed*.018;
+        b.node.style.transform=`translate3d(${b.x-b.r}px,${b.y-b.r}px,0)`;
+        const px=b.squishX,py=b.squishY;
+        b.shape.style.transform=`translate(${px*.24}px,${py*.24}px) scale(${sx},${sy})`;
+        b.shape.style.borderRadius=`${50-py*.18}% ${50+px*.2}% ${50+py*.18}% ${50-px*.2}% / ${50+px*.18}% ${50+py*.2}% ${50-px*.18}% ${50-py*.2}%`;
+      });
+    }
+    function animate(now){
+      const dt=Math.min(2,(now-lastTime)/16.667||1);lastTime=now;physics(dt);
+      let moving=!!activeDrag;for(const b of bubbles.values())if(Math.abs(b.vx)+Math.abs(b.vy)>.08||Math.abs(b.targetSize-b.size)>.2||Math.abs(b.squishX)+Math.abs(b.squishY)>.25||b.y+b.r<dom.world.clientHeight-1)moving=true;
+      if(moving)animationId=requestAnimationFrame(animate);else animationId=0;
+    }
+    function startAnimation(){if(!animationId){lastTime=performance.now();animationId=requestAnimationFrame(animate)}}
+    function changeMonth(delta){
+      viewDate.setMonth(viewDate.getMonth()+delta);updateMonthHeader();renderCategories();updateSummary();
+      bubbles.forEach(b=>b.node.remove());bubbles.clear();syncBubbles(true);window.scrollTo({top:0,behavior:reduceMotion?"auto":"smooth"});
+    }
+    function fullRender(){updateMonthHeader();renderCategories();updateSummary();syncBubbles(true)}
+
+    el("prevMonth").addEventListener("click",()=>changeMonth(-1));
+    el("nextMonth").addEventListener("click",()=>changeMonth(1));
+    el("thisMonth").addEventListener("click",()=>{const n=new Date();viewDate=new Date(n.getFullYear(),n.getMonth(),1,12);changeMonth(0)});
+    el("redrop").addEventListener("click",redrop);
+    el("scrollData").addEventListener("click",()=>el("dataPanel").scrollIntoView({behavior:reduceMotion?"auto":"smooth"}));
+    el("addForm").addEventListener("submit",e=>{
+      e.preventDefault();const input=el("newCategory"),name=input.value.trim();
+      if(!name){showToast("カテゴリー名を入力してください");input.focus();return}
+      if(state.categories.length>=80){showToast("カテゴリーは80件までです");return}
+      state.categories.push({id:makeId(),name,fixed:false,color:COLORS[state.categories.length%COLORS.length]});input.value="";saveNow();renderCategories();showToast("カテゴリーを追加しました");
+    });
+    el("exportData").addEventListener("click",()=>{
+      saveNow();const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);a.download="fuwatto-kakei-backup-"+monthKey()+".json";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);showToast("バックアップを書き出しました");
+    });
+    el("importData").addEventListener("click",()=>{dom.fileInput.value="";dom.fileInput.click()});
+    dom.fileInput.addEventListener("change",async()=>{
+      const file=dom.fileInput.files&&dom.fileInput.files[0];if(!file)return;
+      if(file.size>5*1024*1024){showToast("ファイルが大きすぎます");return}
+      try{
+        const imported=normalizeState(JSON.parse(await file.text()));
+        if(!confirm("バックアップを復元すると、現在のデータは置き換わります。続けますか？"))return;
+        state=imported;saveNow();bubbles.forEach(b=>b.node.remove());bubbles.clear();fullRender();showToast("バックアップを復元しました");
+      }catch(err){showToast("読み込めないバックアップです")}
+    });
+    el("deleteData").addEventListener("click",()=>dom.dialog.showModal());
+    el("cancelDelete").addEventListener("click",()=>dom.dialog.close());
+    el("confirmDelete").addEventListener("click",()=>{
+      state=defaultState();try{localStorage.removeItem(STORAGE_KEY)}catch(err){}
+      dom.dialog.close();bubbles.forEach(b=>b.node.remove());bubbles.clear();fullRender();showToast("すべてのデータを削除しました");
+    });
+    dom.dialog.addEventListener("click",e=>{if(e.target===dom.dialog)dom.dialog.close()});
+    window.addEventListener("resize",()=>{
+      bubbles.forEach(b=>{b.x=Math.max(b.r,Math.min(dom.world.clientWidth-b.r,b.x));b.y=Math.max(b.r,Math.min(dom.world.clientHeight-b.r,b.y))});syncBubbles(false);startAnimation();
+    },{passive:true});
+    window.addEventListener("pagehide",saveNow);
+    fullRender();
+  })();
+  </script>
+</body>
+</html>
