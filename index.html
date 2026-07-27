@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ふわっと家計</title>
+<style>
+:root{
+  --bg:#f4f6fb;
+  --card:#ffffff;
+  --ink:#141824;
+  --sub:#707789;
+  --line:#dfe4ee;
+  --accent:#2446d8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif}
+body{padding:18px 14px 40px}
+.wrap{max-width:720px;margin:0 auto}
+.header{padding:8px 2px 16px}
+.kicker{font-size:12px;color:var(--sub);letter-spacing:.12em}
+.total{font-size:48px;font-weight:800;letter-spacing:-.04em;line-height:1;margin-top:7px}
+.total small{font-size:18px}
+.note{font-size:13px;color:var(--sub);line-height:1.7;margin-top:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 5px 20px rgba(22,30,60,.05)}
+.input-card{margin-bottom:14px}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;color:var(--sub);text-align:left;padding:0 4px 8px}
+td{padding:6px 4px;border-top:1px solid #edf0f5}
+input[type="text"],input[type="number"]{
+  width:100%;min-width:0;border:1px solid #d7ddea;border-radius:10px;padding:10px 11px;
+  font-size:16px;background:#fff;color:var(--ink)
+}
+input[type="color"]{width:38px;height:38px;border:0;background:none;padding:0}
+.remove{
+  border:0;background:#f0f2f7;color:#666d7d;border-radius:10px;width:38px;height:38px;
+  font-size:20px
+}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+button{font:inherit}
+.btn{
+  border:0;border-radius:14px;padding:13px 14px;font-weight:700;font-size:15px
+}
+.btn-sub{background:#edf1ff;color:#2042c7}
+.btn-main{background:var(--accent);color:#fff}
+.btn-lite{background:#f0f2f7;color:#404657}
+.stage-card{padding:0;overflow:hidden}
+.stage-top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.stage-title{font-size:14px;font-weight:700}
+.saved{font-size:11px;color:var(--sub)}
+canvas{display:block;width:100%;height:420px;background:linear-gradient(180deg,#fbfcff,#eef2f8)}
+.legend{padding:12px 16px 16px}
+.legend-row{display:grid;grid-template-columns:1fr auto;gap:6px 12px;padding:10px 0;border-bottom:1px solid #eceff4}
+.legend-row:last-child{border-bottom:0}
+.legend-name{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%}
+.legend-amt{font-size:13px;font-weight:800}
+.legend-pct{grid-column:2;font-size:11px;color:var(--sub);text-align:right}
+.tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+.tools .btn{font-size:13px;padding:11px 8px}
+.message{font-size:12px;color:var(--sub);margin-top:10px;min-height:1.5em}
+@media(max-width:520px){
+  body{padding:12px 10px 30px}
+  .total{font-size:44px}
+  .card{padding:13px}
+  td,th{padding-left:2px;padding-right:2px}
+  .actions{grid-template-columns:1fr}
+  .tools{grid-template-columns:1fr}
+  canvas{height:390px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="header">
+    <div class="kicker">ふわっと家計</div>
+    <div class="total"><span id="total">0</span><small>円</small></div>
+    <div class="note">項目名と金額を入力して「OK・円を動かす」を押してください。入力内容は、この端末のこのブラウザ内だけに保存されます。</div>
+  </header>
+
+  <section class="card input-card">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:48px">色</th>
+          <th>項目名</th>
+          <th style="width:34%">金額</th>
+          <th style="width:42px"></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="actions">
+      <button class="btn btn-sub" id="addBtn" type="button">＋ 項目を追加</button>
+      <button class="btn btn-main" id="runBtn" type="button">OK・円を動かす</button>
+    </div>
+    <div class="message" id="message"></div>
+  </section>
+
+  <section class="card stage-card">
+    <div class="stage-top">
+      <div class="stage-title">支出の大きさ</div>
+      <div class="saved" id="saved"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <div class="tools">
+    <button class="btn btn-lite" id="exportBtn" type="button">バックアップを書き出す</button>
+    <button class="btn btn-lite" id="importBtn" type="button">バックアップを読み込む</button>
+    <button class="btn btn-lite" id="resetBtn" type="button">この端末のデータを消す</button>
+  </div>
+  <input id="fileInput" type="file" accept="application/json" hidden>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var STORAGE_KEY = "fuwatto_kakei_single_v1";
+var defaultData = [
+  {name:"家賃", amount:70000, color:"#2446d8"},
+  {name:"食費", amount:35000, color:"#e55173"},
+  {name:"水道・光熱費", amount:12000, color:"#27a7d8"},
+  {name:"通信費", amount:8000, color:"#8f63d8"},
+  {name:"日用品", amount:6000, color:"#e5a624"},
+  {name:"娯楽", amount:10000, color:"#56a968"}
+];
+
+var rowsEl = document.getElementById("rows");
+var totalEl = document.getElementById("total");
+var legendEl = document.getElementById("legend");
+var msgEl = document.getElementById("message");
+var savedEl = document.getElementById("saved");
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");
+var data = load();
+var balls = [];
+var raf = 0;
+var startTime = 0;
+var width = 0;
+var height = 0;
+
+function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+function load(){
+  try{
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return clone(defaultData);
+    var parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed) || !parsed.length) return clone(defaultData);
+    return parsed;
+  }catch(e){
+    return clone(defaultData);
+  }
+}
+
+function save(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    savedEl.textContent = "保存済み " + new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+  }catch(e){
+    savedEl.textContent = "保存できませんでした";
+  }
+}
+
+function yen(n){
+  return Number(n || 0).toLocaleString("ja-JP");
+}
+
+function renderRows(){
+  rowsEl.innerHTML = "";
+  data.forEach(function(item, index){
+    var tr = document.createElement("tr");
+
+    var tdColor = document.createElement("td");
+    var color = document.createElement("input");
+    color.type = "color";
+    color.value = item.color || "#2446d8";
+    color.addEventListener("input", function(){
+      data[index].color = color.value;
+      save();
+    });
+    tdColor.appendChild(color);
+
+    var tdName = document.createElement("td");
+    var name = document.createElement("input");
+    name.type = "text";
+    name.value = item.name || "";
+    name.placeholder = "例：食費";
+    name.addEventListener("input", function(){
+      data[index].name = name.value;
+      save();
+    });
+    tdName.appendChild(name);
+
+    var tdAmount = document.createElement("td");
+    var amount = document.createElement("input");
+    amount.type = "number";
+    amount.inputMode = "numeric";
+    amount.min = "0";
+    amount.step = "1";
+    amount.value = item.amount || 0;
+    amount.placeholder = "0";
+    amount.addEventListener("input", function(){
+      data[index].amount = Math.max(0, Number(amount.value || 0));
+      save();
+    });
+    tdAmount.appendChild(amount);
+
+    var tdRemove = document.createElement("td");
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "remove";
+    remove.textContent = "×";
+    remove.setAttribute("aria-label","削除");
+    remove.addEventListener("click", function(){
+      if(data.length <= 1){
+        msgEl.textContent = "項目は1つ以上必要です。";
+        return;
+      }
+      data.splice(index,1);
+      save();
+      renderRows();
+      update(false);
+    });
+    tdRemove.appendChild(remove);
+
+    tr.appendChild(tdColor);
+    tr.appendChild(tdName);
+    tr.appendChild(tdAmount);
+    tr.appendChild(tdRemove);
+    rowsEl.appendChild(tr);
+  });
+}
+
+function cleanData(){
+  data = data.map(function(item){
+    return {
+      name: String(item.name || "").trim() || "未設定",
+      amount: Math.max(0, Math.round(Number(item.amount || 0))),
+      color: item.color || "#2446d8"
+    };
+  });
+}
+
+function sortedPositive(){
+  return data.filter(function(d){ return d.amount > 0; })
+    .slice()
+    .sort(function(a,b){ return b.amount - a.amount; });
+}
+
+function renderLegend(items,total){
+  legendEl.innerHTML = "";
+  items.forEach(function(item){
+    var row = document.createElement("div");
+    row.className = "legend-row";
+    var name = document.createElement("div");
+    name.className = "legend-name";
+    name.innerHTML = '<span class="dot" style="background:'+item.color+'"></span>' + escapeHtml(item.name);
+    var amt = document.createElement("div");
+    amt.className = "legend-amt";
+    amt.textContent = yen(item.amount) + "円";
+    var pct = document.createElement("div");
+    pct.className = "legend-pct";
+    pct.textContent = total ? (item.amount/total*100).toFixed(1) + "%" : "0%";
+    row.appendChild(name);
+    row.appendChild(amt);
+    row.appendChild(pct);
+    legendEl.appendChild(row);
+  });
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g,function(ch){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];
+  });
+}
+
+function resizeCanvas(){
+  var rect = canvas.getBoundingClientRect();
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  width = Math.max(300, rect.width);
+  height = Math.max(320, rect.height);
+  canvas.width = Math.round(width*dpr);
+  canvas.height = Math.round(height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function buildBalls(items,total){
+  resizeCanvas();
+  var fillRatio = 0.34;
+  var k = Math.sqrt((fillRatio*width*height)/(Math.PI*Math.max(total,1)));
+  var maxR = Math.min(width*0.28,height*0.24);
+  balls = items.map(function(item,i){
+    var r = Math.max(24, Math.min(maxR, k*Math.sqrt(item.amount)));
+    return {
+      item:item,
+      r:r,
+      x:Math.max(r+4, Math.min(width-r-4, width*(0.16+0.68*((i*0.41)%1)))),
+      y:-r-30-i*34,
+      vx:(Math.random()-0.5)*1.2,
+      vy:0,
+      born:false,
+      release:130+i*240
+    };
+  });
+}
+
+function physicsStep(){
+  balls.forEach(function(b){
+    if(!b.born) return;
+    b.vy += 0.58;
+    b.vx *= 0.994;
+    b.vy *= 0.997;
+    b.x += b.vx;
+    b.y += b.vy;
+    if(b.x-b.r<0){ b.x=b.r; b.vx=Math.abs(b.vx)*0.45; }
+    if(b.x+b.r>width){ b.x=width-b.r; b.vx=-Math.abs(b.vx)*0.45; }
+    if(b.y+b.r>height){ b.y=height-b.r; b.vy=-Math.abs(b.vy)*0.28; b.vx*=0.9; }
+  });
+
+  for(var pass=0; pass<4; pass++){
+    for(var i=0;i<balls.length;i++){
+      for(var j=i+1;j<balls.length;j++){
+        var a=balls[i], b=balls[j];
+        if(!a.born || !b.born) continue;
+        var dx=b.x-a.x, dy=b.y-a.y;
+        var dist=Math.sqrt(dx*dx+dy*dy) || 0.001;
+        var overlap=a.r+b.r-dist;
+        if(overlap<=0) continue;
+        var nx=dx/dist, ny=dy/dist;
+        a.x-=nx*overlap*0.5; a.y-=ny*overlap*0.5;
+        b.x+=nx*overlap*0.5; b.y+=ny*overlap*0.5;
+        var rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+        if(rel<0){
+          var impulse=-rel*0.42;
+          a.vx-=nx*impulse; a.vy-=ny*impulse;
+          b.vx+=nx*impulse; b.vy+=ny*impulse;
+        }
+      }
+    }
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,width,height);
+  balls.forEach(function(b){
+    if(!b.born) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fillStyle=b.item.color;
+    ctx.fill();
+
+    var grad=ctx.createLinearGradient(b.x,b.y-b.r,b.x,b.y+b.r);
+    grad.addColorStop(0,"rgba(255,255,255,.24)");
+    grad.addColorStop(.55,"rgba(255,255,255,0)");
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fillStyle=grad;
+    ctx.fill();
+
+    ctx.fillStyle="#fff";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    var size=Math.max(12,Math.min(22,b.r*0.25));
+    ctx.font="700 "+size+"px -apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif";
+    var label=b.item.name;
+    if(label.length>7) label=label.slice(0,7)+"…";
+    ctx.fillText(label,b.x,b.y-size*0.45);
+    ctx.font="800 "+Math.max(13,Math.min(24,b.r*0.29))+"px -apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif";
+    ctx.fillText(yen(b.item.amount),b.x,b.y+size*0.65);
+    ctx.restore();
+  });
+}
+
+function animate(ts){
+  if(!startTime) startTime=ts;
+  var elapsed=ts-startTime;
+  balls.forEach(function(b){
+    if(!b.born && elapsed>=b.release) b.born=true;
+  });
+  physicsStep();
+  draw();
+  raf=requestAnimationFrame(animate);
+}
+
+function update(animateNow){
+  cleanData();
+  save();
+  renderRows();
+  var items=sortedPositive();
+  var total=items.reduce(function(sum,d){ return sum+d.amount; },0);
+  totalEl.textContent=yen(total);
+  renderLegend(items,total);
+  cancelAnimationFrame(raf);
+  buildBalls(items,total);
+  startTime=0;
+  if(!items.length){
+    draw();
+    msgEl.textContent="1円以上の金額を入力してください。";
+    return;
+  }
+  msgEl.textContent="";
+  if(animateNow){
+    raf=requestAnimationFrame(animate);
+  }else{
+    balls.forEach(function(b){ b.born=true; b.y=Math.max(b.r,height-b.r-Math.random()*90); });
+    for(var i=0;i<180;i++) physicsStep();
+    draw();
+  }
+}
+
+document.getElementById("addBtn").addEventListener("click",function(){
+  data.push({name:"新しい項目",amount:0,color:"#6b7fd7"});
+  save();
+  renderRows();
+});
+
+document.getElementById("runBtn").addEventListener("click",function(){
+  update(true);
+});
+
+document.getElementById("exportBtn").addEventListener("click",function(){
+  cleanData();
+  var blob=new Blob([JSON.stringify({version:1,data:data},null,2)],{type:"application/json"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="fuwatto-kakei-backup.json";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+});
+
+document.getElementById("importBtn").addEventListener("click",function(){
+  document.getElementById("fileInput").click();
+});
+
+document.getElementById("fileInput").addEventListener("change",function(e){
+  var file=e.target.files && e.target.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(){
+    try{
+      var obj=JSON.parse(reader.result);
+      var arr=Array.isArray(obj)?obj:obj.data;
+      if(!Array.isArray(arr) || !arr.length) throw new Error("invalid");
+      data=arr;
+      save();
+      renderRows();
+      update(true);
+      msgEl.textContent="バックアップを読み込みました。";
+    }catch(err){
+      msgEl.textContent="このバックアップは読み込めませんでした。";
+    }
+  };
+  reader.readAsText(file);
+  e.target.value="";
+});
+
+document.getElementById("resetBtn").addEventListener("click",function(){
+  if(!confirm("この端末の保存データを消して、初期状態に戻しますか？")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  data=clone(defaultData);
+  save();
+  renderRows();
+  update(true);
+});
+
+window.addEventListener("resize",function(){
+  clearTimeout(window.__resizeTimer);
+  window.__resizeTimer=setTimeout(function(){ update(false); },150);
+});
+
+renderRows();
+update(false);
+})();
+</script>
+</body>
+</html>
